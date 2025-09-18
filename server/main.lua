@@ -82,6 +82,19 @@ CreateThread(function()
                                     motels[motel].duration = Config.Motels[motel].payInterval
                                 end
                             else
+                                local Player = QBCore.Functions.GetPlayerByCitizenId(row.renter)
+                                if Player then
+                                    local inventory = Player.PlayerData.items
+                                    for slot, item in pairs(inventory) do
+                                        if item and item.name == Config.Motelkey then
+                                            local motelInfo = item.info or item.metadata
+                                            if motelInfo and motelInfo.motel == motel and tostring(motelInfo.uniqueID) == tostring(uniqueid) then
+                                                Player.Functions.RemoveItem(Config.Motelkey, 1, slot)
+                                                break
+                                            end
+                                        end
+                                    end
+                                end
                                 MySQL.query('DELETE FROM `jc_motels` WHERE `motel` = ? AND uniqueid = ?', {motel, uniqueid}, function() end)
                                 motels[motel].owner = nil
                                 motels[motel].duration = 0
