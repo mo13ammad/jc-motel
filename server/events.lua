@@ -102,20 +102,40 @@ end)
 
 RegisterNetEvent('motel:server:endRent', function(name, uniqueID)
     local src = source
-    MySQL.query('DELETE FROM `jc_motels` WHERE motel = ? AND uniqueid = ?', {name, uniqueID}, function(response)
-        if response and #response > 0 then
-            for i = 1, #response do
+    local Player = QBCore.Functions.GetPlayer(src)
+    local keyFound = false
+    local keySlot = -1
+
+    local inventory = Player.PlayerData.items
+    for slot, item in pairs(inventory) do
+        if item and item.name == Config.Motelkey then
+            if item.info and item.info.motel == name and item.info.uniqueID == uniqueID then
+                keyFound = true
+                keySlot = slot
+                break
             end
         end
-    end)
-    for _, room in pairs(roomData[name]) do
-        if room.uniqueID == uniqueID then
-            room.ledger = 0
-            room.renter = ''
-            room.renterName = ''
-            QBCore.Functions.Notify(src, _L('endedrent'), 'error', 3000)
-            break
+    end
+
+    if keyFound then
+        Player.Functions.RemoveItem(Config.Motelkey, 1, keySlot)
+        MySQL.query('DELETE FROM `jc_motels` WHERE motel = ? AND uniqueid = ?', {name, uniqueID}, function(response)
+            if response and #response > 0 then
+                for i = 1, #response do
+                end
+            end
+        end)
+        for _, room in pairs(roomData[name]) do
+            if room.uniqueID == uniqueID then
+                room.ledger = 0
+                room.renter = ''
+                room.renterName = ''
+                QBCore.Functions.Notify(src, _L('endedrent'), 'error', 3000)
+                break
+            end
         end
+    else
+        QBCore.Functions.Notify(src, _L('nokey'), 'error', 3000)
     end
 end)
 
