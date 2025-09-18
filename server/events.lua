@@ -39,24 +39,30 @@ RegisterNetEvent('motel:server:rentRoom', function(motel, roomUniqueID, room, pa
     local citizenid = Player.PlayerData.citizenid
     local name = Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname
 
-    if MySQL.insert.await('INSERT INTO `jc_motels` (motel, room, uniqueid, renter, renterName, duration) VALUES (?, ?, ?, ?, ?, ?)', {
-        motel, room, roomUniqueID, citizenid, name, payInterval
-    }) then
-        Player.Functions.RemoveMoney(paymethode, motels[motel].roomprices or price)
-    end
-    for _, room in pairs(roomData[motel]) do
-        if room.uniqueID == roomUniqueID then
-            room.renter = citizenid
-            room.renterName = citizenid
-            room.duration = payInterval
-            if Config.StashProtection then
-                if Config.StashProtection == 'password' then
-                    room.password = ''
+    MySQL.query('SELECT * FROM `jc_motels` WHERE `renter` = ?', {citizenid}, function(result)
+        if result[1] then
+            QBCore.Functions.Notify(src, _L('alreadyrented'), 'error', 3000)
+        else
+            if MySQL.insert.await('INSERT INTO `jc_motels` (motel, room, uniqueid, renter, renterName, duration) VALUES (?, ?, ?, ?, ?, ?)', {
+                motel, room, roomUniqueID, citizenid, name, payInterval
+            }) then
+                Player.Functions.RemoveMoney(paymethode, motels[motel].roomprices or price)
+            end
+            for _, room in pairs(roomData[motel]) do
+                if room.uniqueID == roomUniqueID then
+                    room.renter = citizenid
+                    room.renterName = citizenid
+                    room.duration = payInterval
+                    if Config.StashProtection then
+                        if Config.StashProtection == 'password' then
+                            room.password = ''
+                        end
+                    end
+                    break
                 end
             end
-            break
         end
-    end
+    end)
 end)
 
 RegisterNetEvent('motel:server:changeStashPassword', function(name, uniqueID, password)
