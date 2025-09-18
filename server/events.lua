@@ -109,7 +109,8 @@ RegisterNetEvent('motel:server:endRent', function(name, uniqueID)
     local inventory = Player.PlayerData.items
     for slot, item in pairs(inventory) do
         if item and item.name == Config.Motelkey then
-            if item.info and item.info.motel == name and tostring(item.info.uniqueID) == tostring(uniqueID) then
+            local motelInfo = item.info or item.metadata
+            if motelInfo and motelInfo.motel == name and tostring(motelInfo.uniqueID) == tostring(uniqueID) then
                 keyFound = true
                 keySlot = slot
                 break

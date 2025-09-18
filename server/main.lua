@@ -87,7 +87,8 @@ CreateThread(function()
                                     local inventory = Player.PlayerData.items
                                     for slot, item in pairs(inventory) do
                                         if item and item.name == Config.Motelkey then
-                                            if item.info and item.info.motel == motel and item.info.uniqueID == uniqueid then
+                                            local motelInfo = item.info or item.metadata
+                                            if motelInfo and motelInfo.motel == motel and tostring(motelInfo.uniqueID) == tostring(uniqueid) then
                                                 Player.Functions.RemoveItem(Config.Motelkey, 1, slot)
                                                 break
                                             end
