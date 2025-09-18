@@ -92,4 +92,7 @@ Locale['en'] = {
     ['policebrokendoor'] = 'You\'ve broken down the door successfully!',
     ['policebrokendoorfail'] = 'You failed to break down the door!',
     ['masterkeytext'] = 'The stash masterkey is ',
+    ['rent_expired'] = 'Your rental for this room has expired.',
+    ['not_your_room'] = 'This is not your room.',
+    ['room_not_rented'] = 'This room is not currently rented.',
 }

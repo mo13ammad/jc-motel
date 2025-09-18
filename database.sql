@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `jc_motels` (
   `stashpassword` varchar(200) NOT NULL DEFAULT '',
   `ledger` int(11) DEFAULT 0,
   `duration` int(11) DEFAULT 0,
+  `rent_timestamp` int(11) DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=69 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
