@@ -532,27 +532,28 @@ end
 
 function ToggleDoorHandler(name, room)
     local items = QBCore.Functions.GetPlayerData().items
+    local hasKey = false
     for _, item in pairs(items) do
         if item.name == Config.Motelkey then
             local motelInfo = item.info or item.metadata or {}
             if motelInfo.motel == name and motelInfo.room == room.room and motelInfo.uniqueID == room.uniqueID then
-                QBCore.Functions.TriggerCallback('motel:doorState', function(state)
-                    RequestAnimDict('anim@mp_player_intmenu@key_fob@')
-                    while not HasAnimDictLoaded('anim@mp_player_intmenu@key_fob@') do
-                        Wait(10)
-                    end
-                    TaskPlayAnim(PlayerPedId(), 'anim@mp_player_intmenu@key_fob@', 'fob_click', -8.0, 8.0, 1000, 50, 0.0, false, false, false)
-                    Config.DoorlockAction(room.uniqueID, not state)
-                    TriggerServerEvent('motels:server:toggleDoorlock', name, room.uniqueID, not state)
-                    hasKey = true
-                    return
-                end, name, room.uniqueID)
+                hasKey = true
+                -- Play animation
+                RequestAnimDict('anim@mp_player_intmenu@key_fob@')
+                while not HasAnimDictLoaded('anim@mp_player_intmenu@key_fob@') do
+                    Wait(10)
+                end
+                TaskPlayAnim(PlayerPedId(), 'anim@mp_player_intmenu@key_fob@', 'fob_click', -8.0, 8.0, 1000, 50, 0.0, false, false, false)
+
+                -- Trigger server event for validation and door toggling
+                TriggerServerEvent('motels:server:toggleDoorlock', name, room.uniqueID)
+                break -- Exit the loop once a key is found and used
             end
         end
     end
-    Wait(100)
+
     if not hasKey then
-        return QBCore.Functions.Notify(_L('nokey'), 'error', 3000)
+        QBCore.Functions.Notify(_L('nokey'), 'error', 3000)
     end
 end
 RegisterNetEvent('motel:client:toggleDoorHander', ToggleDoorHandler)

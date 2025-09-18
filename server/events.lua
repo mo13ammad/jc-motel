@@ -1,6 +1,6 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
-RegisterNetEvent('motels:server:toggleDoorlock', function(name, uniqueID, state)
+RegisterNetEvent('motels:server:toggleDoorlock', function(name, uniqueID)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
@@ -10,13 +10,20 @@ RegisterNetEvent('motels:server:toggleDoorlock', function(name, uniqueID, state)
     MySQL.query('SELECT owner FROM `jc_ownedmotels` WHERE `name` = ?', {name}, function(ownerResult)
         if ownerResult and ownerResult[1] and ownerResult[1].owner == citizenid then
             -- Player is the owner, allow access
+            local currentRoom = nil
             for _, room in pairs(roomData[name]) do
                 if room.uniqueID == uniqueID then
-                    room.isLocked = state
+                    currentRoom = room
                     break
                 end
             end
-            TriggerClientEvent('motels:client:toggleDoorlock', -1, name, uniqueID, state)
+
+            if currentRoom then
+                local newState = not currentRoom.isLocked
+                Config.DoorlockAction(uniqueID, newState)
+                currentRoom.isLocked = newState
+                TriggerClientEvent('motels:client:toggleDoorlock', -1, name, uniqueID, newState)
+            end
             return
         end
 
@@ -28,13 +35,20 @@ RegisterNetEvent('motels:server:toggleDoorlock', function(name, uniqueID, state)
                     local expirationTime = rental.rent_timestamp + (rental.duration * 3600)
                     if os.time() < expirationTime then
                         -- Rental is valid, toggle the door
+                        local currentRoom = nil
                         for _, room in pairs(roomData[name]) do
                             if room.uniqueID == uniqueID then
-                                room.isLocked = state
+                                currentRoom = room
                                 break
                             end
                         end
-                        TriggerClientEvent('motels:client:toggleDoorlock', -1, name, uniqueID, state)
+
+                        if currentRoom then
+                            local newState = not currentRoom.isLocked
+                            Config.DoorlockAction(uniqueID, newState)
+                            currentRoom.isLocked = newState
+                            TriggerClientEvent('motels:client:toggleDoorlock', -1, name, uniqueID, newState)
+                        end
                     else
                         -- Rental has expired
                         QBCore.Functions.Notify(src, Lang['rent_expired'], 'error', 5000)
