@@ -1,13 +1,72 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
-RegisterNetEvent('motels:server:toggleDoorlock', function(name, uniqueID, state)
-    for _, room in pairs(roomData[name]) do
-        if room.uniqueID == uniqueID then
-            room.isLocked = state
-            break
+RegisterNetEvent('motels:server:toggleDoorlock', function(name, uniqueID)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+    local citizenid = Player.PlayerData.citizenid
+
+    -- First, check if the player is the owner of the motel
+    MySQL.query('SELECT owner FROM `jc_ownedmotels` WHERE `name` = ?', {name}, function(ownerResult)
+        if ownerResult and ownerResult[1] and ownerResult[1].owner == citizenid then
+            -- Player is the owner, allow access
+            local currentRoom = nil
+            for _, room in pairs(roomData[name]) do
+                if room.uniqueID == uniqueID then
+                    currentRoom = room
+                    break
+                end
+            end
+
+            if currentRoom then
+                local newState = not currentRoom.isLocked
+                if Config.DoorlockScript == 'ox_doorlock' then
+                    exports['ox_doorlock']:setDoorState(uniqueID, newState)
+                elseif Config.DoorlockScript == 'qb-doorlock' then
+                    TriggerEvent('qb-doorlock:server:updateState', uniqueID, newState, false, false, true, false, false)
+                end
+                currentRoom.isLocked = newState
+                TriggerClientEvent('motels:client:toggleDoorlock', -1, name, uniqueID, newState)
+            end
+            return
         end
-    end
-    TriggerClientEvent('motels:client:toggleDoorlock', -1, name, uniqueID, state)
+
+       -- If not the owner, check if the room has a valid, active rental.
+        -- We no longer check WHO is opening the door, only THAT the rental is active.
+        MySQL.query('SELECT * FROM `jc_motels` WHERE `motel` = ? AND `uniqueid` = ?', {name, tostring(uniqueID)}, function(rentalResult)
+            if rentalResult and rentalResult[1] then
+                local rental = rentalResult[1]
+                local expirationTime = rental.rent_timestamp + (rental.duration * 3600)
+                if os.time() < expirationTime then
+                    -- Rental is active, so anyone with a key can enter.
+                    local currentRoom = nil
+                    for _, room in pairs(roomData[name]) do
+                        if room.uniqueID == uniqueID then
+                            currentRoom = room
+                            break
+                        end
+                    end
+
+                    if currentRoom then
+                        local newState = not currentRoom.isLocked
+                        if Config.DoorlockScript == 'ox_doorlock' then
+                            exports['ox_doorlock']:setDoorState(uniqueID, newState)
+                        elseif Config.DoorlockScript == 'qb-doorlock' then
+                            TriggerEvent('qb-doorlock:server:updateState', uniqueID, newState, false, false, true, false, false)
+                        end
+                        currentRoom.isLocked = newState
+                        TriggerClientEvent('motels:client:toggleDoorlock', -1, name, uniqueID, newState)
+                    end
+                else
+                    -- Rental has expired
+                    QBCore.Functions.Notify(src, "rent_expired", 'error', 5000)
+                end
+            else
+                -- No rental record, deny access
+                QBCore.Functions.Notify(src, "room_not_rented", 'error', 5000)
+            end
+        end)
+    end)
 end)
 
 RegisterNetEvent('motel:server:buyMotel', function(name, motelData, paymethode)
@@ -45,18 +104,19 @@ QBCore.Functions.CreateCallback('motel:server:rentRoom', function(source, cb, mo
         QBCore.Functions.Notify(src, _L('alreadyrented'), 'error', 3000)
         cb(false)
     else
-        if MySQL.insert.await('INSERT INTO `jc_motels` (motel, room, uniqueid, renter, renterName, duration) VALUES (?, ?, ?, ?, ?, ?)', {
-            motel, room, roomUniqueID, citizenid, name, payInterval
+        if MySQL.insert.await('INSERT INTO `jc_motels` (motel, room, uniqueid, renter, renterName, duration, rent_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)', {
+            motel, room, roomUniqueID, citizenid, name, payInterval, os.time()
         }) then
             Player.Functions.RemoveMoney(paymethode, motels[motel].roomprices or price)
-            for _, roomData in pairs(roomData[motel]) do
-                if roomData.uniqueID == roomUniqueID then
-                    roomData.renter = citizenid
-                    roomData.renterName = citizenid
-                    roomData.duration = payInterval
+            for _, roomd in pairs(roomData[motel]) do
+                if roomd.uniqueID == roomUniqueID then
+                    roomd.renter = citizenid
+                    roomd.renterName = citizenid
+                    roomd.duration = payInterval
+                    roomd.rent_timestamp = os.time()
                     if Config.StashProtection then
                         if Config.StashProtection == 'password' then
-                            roomData.password = ''
+                            roomd.password = ''
                         end
                     end
                     break
