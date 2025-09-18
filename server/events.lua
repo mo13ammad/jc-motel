@@ -33,28 +33,38 @@ RegisterNetEvent('motel:server:buyMotel', function(name, motelData, paymethode)
     end)
 end)
 
-RegisterNetEvent('motel:server:rentRoom', function(motel, roomUniqueID, room, payInterval, paymethode, price)
+QBCore.Functions.CreateCallback('motel:server:rentRoom', function(source, cb, motel, roomUniqueID, room, payInterval, paymethode, price)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     local citizenid = Player.PlayerData.citizenid
     local name = Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname
 
-    if MySQL.insert.await('INSERT INTO `jc_motels` (motel, room, uniqueid, renter, renterName, duration) VALUES (?, ?, ?, ?, ?, ?)', {
-        motel, room, roomUniqueID, citizenid, name, payInterval
-    }) then
-        Player.Functions.RemoveMoney(paymethode, motels[motel].roomprices or price)
-    end
-    for _, room in pairs(roomData[motel]) do
-        if room.uniqueID == roomUniqueID then
-            room.renter = citizenid
-            room.renterName = citizenid
-            room.duration = payInterval
-            if Config.StashProtection then
-                if Config.StashProtection == 'password' then
-                    room.password = ''
+    local result = MySQL.Sync.fetchAll('SELECT * FROM `jc_motels` WHERE `renter` = ?', {citizenid})
+
+    if result[1] then
+        QBCore.Functions.Notify(src, _L('alreadyrented'), 'error', 3000)
+        cb(false)
+    else
+        if MySQL.insert.await('INSERT INTO `jc_motels` (motel, room, uniqueid, renter, renterName, duration) VALUES (?, ?, ?, ?, ?, ?)', {
+            motel, room, roomUniqueID, citizenid, name, payInterval
+        }) then
+            Player.Functions.RemoveMoney(paymethode, motels[motel].roomprices or price)
+            for _, roomData in pairs(roomData[motel]) do
+                if roomData.uniqueID == roomUniqueID then
+                    roomData.renter = citizenid
+                    roomData.renterName = citizenid
+                    roomData.duration = payInterval
+                    if Config.StashProtection then
+                        if Config.StashProtection == 'password' then
+                            roomData.password = ''
+                        end
+                    end
+                    break
                 end
             end
-            break
+            cb(true)
+        else
+            cb(false)
         end
     end
 end)

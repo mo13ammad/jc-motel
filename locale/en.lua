@@ -28,6 +28,7 @@ Locale['en'] = {
     ['nodata'] = 'No data found!',
     ['noroomsrented'] = 'No rooms has been rented yet!',
     ['wrongpassword'] = 'Wrong password entered!',
+    ['alreadyrented'] = 'You already have a room rented!',
     ['endedrent'] = 'You have ended your rent!',
 
     ['managerooms'] = 'Manage Rooms',

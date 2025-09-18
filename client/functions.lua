@@ -271,8 +271,11 @@ function RentRoomsHandler(name, motelData)
                             })
                         
                             if PlayerData.money[info[1]] >= motelData.roomprices then
-                                TriggerServerEvent('motel:server:rentRoom', name, roomData.uniqueID, roomData.room, motelData.payInterval, info[1], motelData.roomprices)
-                                TriggerServerEvent('motel:server:giveKey', name, roomData)
+                                QBCore.Functions.TriggerCallback('motel:server:rentRoom', function(success)
+                                    if success then
+                                        TriggerServerEvent('motel:server:giveKey', name, roomData)
+                                    end
+                                end, name, roomData.uniqueID, roomData.room, motelData.payInterval, info[1], motelData.roomprices)
                             else
                                 QBCore.Functions.Notify(_L('nomoney'), 'error', 3000)
                             end
